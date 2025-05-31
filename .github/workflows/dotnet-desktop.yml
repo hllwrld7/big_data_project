@@ -106,6 +106,8 @@ jobs:
     # Upload the MSIX package: https://github.com/marketplace/actions/upload-a-build-artifact
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
+      env:
+        Configuration: ${{ matrix.configuration }}
       with:
         name: MSIX Package
         path: BigDataProject\BigDataProject\bin\$env:Configuration\net8.0
