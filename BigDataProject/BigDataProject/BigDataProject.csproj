@@ -7,18 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="kaggle.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="KaggleAPI.Web" Version="1.0.0" />
     <PackageReference Include="MySql.Data" Version="9.3.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
-
-	<ItemGroup>
-		<Content Include="kaggle.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
-	</ItemGroup>
+	
 </Project>
