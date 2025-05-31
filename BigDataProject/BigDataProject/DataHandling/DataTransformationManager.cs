@@ -2,8 +2,10 @@
 using Microsoft.Extensions.Options;
 using Microsoft.VisualBasic.FileIO;
 using Mysqlx.Crud;
+using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Text.RegularExpressions;
 
 namespace BigDataProject.DataHandling
@@ -29,6 +31,10 @@ namespace BigDataProject.DataHandling
                 using (TextFieldParser csvReader = new TextFieldParser(csvFilePath))
                 {
                     Console.WriteLine(csvFilePath);
+
+                    if (csvReader == null)
+                        return csvData;
+
                     csvReader.SetDelimiters(new string[] { "," });
                     csvReader.HasFieldsEnclosedInQuotes = true;
                     string[] colFields = csvReader.ReadFields();
@@ -38,11 +44,15 @@ namespace BigDataProject.DataHandling
                         try
                         {
                             string[] fields = csvReader.ReadFields();
+
+                            if (fields == null)
+                                return csvData;
+
                             fieldData.Add(fields);
                         }
                         catch
                         {
-                            Console.WriteLine("field skipped :(");
+                            Console.WriteLine("Field skipped");
                         }
                     }
 
@@ -50,13 +60,14 @@ namespace BigDataProject.DataHandling
                     var doubleColumns = new List<int>();
                     var stringColumns = new List<int>();
 
+                    if (colFields == null)
+                        return csvData;
+
                     for (int i = 0; i < colFields.Length; i++)
                     {
                         DataColumn dataColumn = new DataColumn(colFields[i]);
-                        dataColumn.DataType = GetColumnType(fieldData, i);
 
-                        if (dataColumn.ColumnName.IndexOf("sale", StringComparison.OrdinalIgnoreCase) >= 0)
-                            dataColumn.DataType = typeof(double);
+                        dataColumn.DataType = GetColumnType(fieldData, i);
 
                         if (dataColumn.DataType == typeof(DateTime))
                             dateTimeColumns.Add(i);
@@ -92,7 +103,7 @@ namespace BigDataProject.DataHandling
                         //Making empty value as null
                         for (int j = 0; j < fieldDataList[i].Length; j++)
                         {
-                            if (fieldDataList[i][j] == "")
+                            if (fieldDataList[i][j] == "" || string.Equals(fieldDataList[i][j], "n/a", StringComparison.OrdinalIgnoreCase) || string.Equals(fieldDataList[i][j], "tbd", StringComparison.OrdinalIgnoreCase))
                             {
                                 fieldData[i][j] = null;
                             }
@@ -157,7 +168,7 @@ namespace BigDataProject.DataHandling
 
         private static System.Type GetColumnType(List<string[]> rows, int columnIndex)
         {
-            var isColumnInt = true;
+            var isColumnInt = false;
             var isColumnDouble = false;
             var isColumnDate = true;
             var isColumnBool = false;
@@ -169,16 +180,19 @@ namespace BigDataProject.DataHandling
 
                 var value = row[columnIndex];
 
+                if (string.IsNullOrEmpty(value) || string.Equals(value, "n/a", StringComparison.OrdinalIgnoreCase) || string.Equals(value, "tbd", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 if (value.Any(x => x == ',' || x == '.') || isColumnDouble)
                 {
                     var potentialDouble = value.Replace('.', ',');
                     isColumnDouble = double.TryParse(potentialDouble, out var b);
                 }
 
+                isColumnInt = int.TryParse(value, out var n);
+
                 isColumnBool = bool.TryParse(value, out var h);
                     
-                isColumnInt = int.TryParse(value, out var c);
-
                 if (isColumnDate && !isColumnDouble)
                 {
                     if (!DateTime.TryParse(value, out var a))
@@ -188,13 +202,14 @@ namespace BigDataProject.DataHandling
             if (isColumnBool)
                 return typeof(bool);
 
-            if (isColumnDouble)
+            // I don't really see a reason to differentiate between double and int and they cause problems while merging tables
+            if (isColumnDouble || isColumnInt)
                 return typeof(double);
 
             if (isColumnDate)
                 return typeof(DateTime);
 
-            return isColumnInt ? typeof(int) : typeof(string);
+            return typeof(string);
         }
 
         public async Task JoinAllTablesByColumn(string column)

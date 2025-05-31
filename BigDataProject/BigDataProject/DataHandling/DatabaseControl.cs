@@ -19,28 +19,6 @@ namespace BigDataProject.DataHandling
             _schemaName = config.Value.SchemaName;
         }
 
-        public List<string> GetTableColumns(string tableName)
-        {
-            var columns = new List<string>();
-            using (var dbConnection = new MySqlConnection(_connectionString))
-            {
-                dbConnection.Open();
-                var query = SqlQueryHelper.GetColumnsForTableCommand(tableName, _schemaName);
-                LogQuery(query);
-                MySqlCommand cmd = new MySqlCommand(query, dbConnection);
-                var dataReader = cmd.ExecuteReader();
-                while (dataReader.Read())
-                {
-                    var value = dataReader["COLUMN_NAME"];
-                    if (value == null)
-                        continue;
-                    columns.Add(value.ToString());
-                }
-                dbConnection.Close();
-            }
-            return columns;
-        }
-
         public List<string> GetAllTableNamesWithSpecificColumn(string column)
         {
             var tables = new List<string>();
@@ -90,7 +68,6 @@ namespace BigDataProject.DataHandling
                     }
                     catch (Exception ex)
                     {
-                        var e = dataTable.GetErrors();
                         Console.WriteLine(ex.Message);
                     }
                 }
@@ -112,7 +89,6 @@ namespace BigDataProject.DataHandling
             }
             catch (Exception ex)
             {
-                var e = dataTable.GetErrors();
                 Console.WriteLine(ex.Message);
             }
 
@@ -218,29 +194,6 @@ namespace BigDataProject.DataHandling
                 }
             }
 
-        }
-
-        public async Task ModifyColumnType(string tableName, string columnName, string newType)
-        {
-            using (var dbConnection = new MySqlConnection(_connectionString))
-            {
-                try
-                {
-                    dbConnection.Open();
-                    var query = SqlQueryHelper.ModifyColumnQuery(tableName, columnName, newType);
-                    var command = new MySqlCommand(query, dbConnection);
-                    LogQuery(command.CommandText);
-                    await command.ExecuteNonQueryAsync();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
-                finally
-                {
-                    dbConnection.Close();
-                }
-            }
         }
     }
 }
