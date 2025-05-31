@@ -40,7 +40,14 @@ namespace BigDataProject.DataHandling
 
                 foreach (var dataset in datasetRefs)
                 {
-                    await kaggle.DatasetDownload(dataset.ToString(), path: _csvFilesDirectory, unzip: true);
+                    try
+                    {
+                        await kaggle.DatasetDownload(dataset.ToString(), path: _csvFilesDirectory, unzip: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                    }
                     Console.WriteLine($"Downloaded files for {dataset.ToString()} dataset");
                 }
             }

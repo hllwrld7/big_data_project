@@ -1,6 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
 using System.Data;
-using System.Diagnostics;
 using System.Text;
 
 namespace BigDataProject.SqlQueries
@@ -25,11 +24,6 @@ namespace BigDataProject.SqlQueries
             return $"SELECT * FROM {tableName} {limit0};";
         }
 
-        public static string ModifyColumnQuery(string tableName, string columnName, string newType)
-        {
-            return $"ALTER TABLE {tableName} MODIFY COLUMN {columnName} {newType};";
-        }
-
         public static string CreateTableQuery(DataTable table)
         {
             StringBuilder sql = new StringBuilder();
@@ -39,35 +33,27 @@ namespace BigDataProject.SqlQueries
 
             for (int i = 0; i < table.Columns.Count; i++)
             {
-                bool isNumeric = false;
-                bool usesColumnDefault = true;
-
                 sql.AppendFormat("\n\t{0}", table.Columns[i].ColumnName);
 
                 switch (table.Columns[i].DataType.ToString().ToUpper())
                 {
                     case "SYSTEM.INT32":
                         sql.Append(" int(11)");
-                        isNumeric = true;
                         break;
                     case "SYSTEM.INT64":
                         sql.Append(" bigint(11)");
-                        isNumeric = true;
                         break;
                     case "SYSTEM.DATETIME":
                         sql.Append(" datetime(6)");
-                        usesColumnDefault = false;
                         break;
                     case "SYSTEM.STRING":
                         sql.AppendFormat(" varchar(255)", table.Columns[i].MaxLength);
                         break;
                     case "SYSTEM.DOUBLE":
                         sql.Append(" double(40,2)");
-                        isNumeric = true;
                         break;
                     case "SYSTEM.BOOL":
                         sql.Append(" tinyint(1)");
-                        isNumeric = true;
                         break;
                     default:
                         sql.AppendFormat(" varchar(255)", table.Columns[i].MaxLength);
@@ -117,10 +103,8 @@ namespace BigDataProject.SqlQueries
 
                 queryBuilder.AppendFormat("INSERT INTO `{0}` (", table_name);
 
-                // more than 1 column required and 1 or more rows
                 if (table.Columns.Count > 1 && table.Rows.Count > 0)
                 {
-                    // build all columns
                     queryBuilder.AppendFormat("`{0}`", table.Columns[0].ColumnName);
 
                     if (table.Columns.Count > 1)
@@ -135,25 +119,33 @@ namespace BigDataProject.SqlQueries
 
                     if (table.Rows.Count > 1)
                     {
-
-                        // escape String & Datetime values!
                         if (table.Columns[0].DataType == typeof(String))
                         {
                             queryBuilder.AppendFormat("'{0}'", MySqlHelper.EscapeString(table.Rows[row][table.Columns[0].ColumnName].ToString()));
                         }
                         else if (table.Columns[0].DataType == typeof(DateTime))
                         {
-                            dt = (DateTime)table.Rows[row][table.Columns[0].ColumnName];
-                            queryBuilder.AppendFormat("'{0}'", dt.ToString("yyyy-MM-dd HH:mm:ss"));
+                            var value = table.Rows[row][table.Columns[0].ColumnName];
+                            string val;
+
+                            if (value is not DBNull)
+                            {
+                                dt = (DateTime)value;
+                                val = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                            }
+                            else
+                                val = "";
+
+                            queryBuilder.AppendFormat(", '{0}'", val);
                         }
                         else if (table.Columns[0].DataType == typeof(Int32))
                         {
-                            queryBuilder.AppendFormat("{0}", table.Rows[row].Field<Int32?>(table.Columns[0].ColumnName) ?? 0);
+                            queryBuilder.AppendFormat(", {0}", table.Rows[row].Field<Int32?>(table.Columns[0].ColumnName) ?? 0);
                         }
                         else if (table.Columns[0].DataType == typeof(Double))
                         {
-                            var value = table.Rows[row].Field<string?>(table.Columns[0].ColumnName) ?? "";
-                            queryBuilder.AppendFormat(", {0}", value.Replace(',', '.'));
+                            var value = table.Rows[row].Field<Double?>(table.Columns[0].ColumnName) ?? 0;
+                            queryBuilder.AppendFormat(", {0}", value.ToString().Replace(',', '.'));
                         }
                         else
                         {
@@ -169,8 +161,18 @@ namespace BigDataProject.SqlQueries
                             }
                             else if (table.Columns[col].DataType == typeof(DateTime))
                             {
-                                dt = (DateTime)table.Rows[row][table.Columns[col].ColumnName];
-                                queryBuilder.AppendFormat(", '{0}'", dt.ToString("yyyy-MM-dd HH:mm:ss"));
+                                var value = table.Rows[row][table.Columns[col].ColumnName];
+                                string val;
+
+                                if (value is not DBNull)
+                                {
+                                    dt = (DateTime)value;
+                                    val = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                                }
+                                else
+                                    val = "";
+                                
+                                queryBuilder.AppendFormat(", '{0}'", val);
                             }
                             else if (table.Columns[col].DataType == typeof(Int32))
                             {
@@ -185,23 +187,21 @@ namespace BigDataProject.SqlQueries
                             {
                                 queryBuilder.AppendFormat(", {0}", table.Rows[row][table.Columns[col].ColumnName].ToString());
                             }
-                        } // end for (int i = 1; i < table.Columns.Count; i++)
+                        }
 
-                        // close value block
                         queryBuilder.Append(")");
                         queryBuilder.AppendLine();
 
-                        // sql delimiter =)
                         queryBuilder.Append(";");
 
-                    } // end if (table.Rows.Count > 1)
+                    }
 
                     return queryBuilder.ToString();
                 }
                 else
                 {
                     return "";
-                } // end if(table.Columns.Count > 1 && table.Rows.Count > 0)
+                }
             }
             catch (Exception ex)
             {
